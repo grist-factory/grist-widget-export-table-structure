@@ -1,0 +1,192 @@
+/** Python source text, read and written without ever evaluating it. */
+
+const ESCAPED = { "\\": "\\\\", "'": "\\'", "\n": "\\n", "\r": "\\r", "\t": "\\t" };
+const UNESCAPED = { n: "\n", r: "\r", t: "\t" };
+const STRING_LITERAL = /^(?:'((?:\\.|[^'\\])*)'|"((?:\\.|[^"\\])*)")$/s;
+
+/** `text` as a single-quoted literal that stays on one line. */
+export function quotePython(text) {
+  return `'${String(text).replace(/[\\'\n\r\t]/g, (ch) => ESCAPED[ch])}'`;
+}
+
+/** The value of a string literal given as source text (either quote style, inverse of quotePython), or null. */
+export function parseString(source) {
+  const match = source?.match(STRING_LITERAL);
+  return match ? (match[1] ?? match[2]).replace(/\\(.)/g, (_, ch) => UNESCAPED[ch] ?? ch) : null;
+}
+
+/** The number of spaces and tabs a line starts with, and of the no-break spaces that a text copied from a web page has in their place. */
+export const indentOf = (line) => line.match(/^[ \t\u00a0]*/)[0].length;
+
+const WORD = /\w+/y;
+const STRING_PREFIX = /^(?:[rubf]|r[bf]|[bf]r)$/i;
+const isQuote = (ch) => ch === "'" || ch === '"';
+
+const UNKNOWN = -2;
+
+/**
+ * Index after the string whose opening quotes are at `at`: the end of its line when a single-quoted one is
+ * left open, -1 when a triple-quoted one is never closed. A backslash escapes the next character, a line break included.
+ * `reached` remembers, for each kind of triple quote, where a walk that goes through a position ends up: the walks
+ * of the openers that follow in the same text join the ones already made instead of going to the end of the text again.
+ */
+function stringEnd(text, at, reached) {
+  const delimiter = text.startsWith(text[at].repeat(3), at) ? text[at].repeat(3) : text[at];
+  if (delimiter.length === 1) {
+    for (let i = at + 1; i < text.length; i++) {
+      if (text[i] === "\\") i++;
+      else if (text[i] === delimiter) return i + 1;
+      else if (text[i] === "\n") return i;
+    }
+    return text.length;
+  }
+  const memo = (reached[delimiter] ??= new Int32Array(text.length + 2).fill(UNKNOWN));
+  const path = [];
+  let end = -1;
+  for (let i = at + 3; i < text.length; ) {
+    if (memo[i] !== UNKNOWN) {
+      end = memo[i];
+      break;
+    }
+    path.push(i);
+    if (text[i] === "\\") i += 2;
+    else if (text.startsWith(delimiter, i)) {
+      end = i + 3;
+      break;
+    } else i++;
+  }
+  for (const position of path) memo[position] = end;
+  return end;
+}
+
+/**
+ * [start, end) of every string of Python in `text`. Literals that follow one another make one string, as
+ * Python reads them: after a backslash, or inside brackets, over comments and line breaks.
+ */
+function stringRanges(text) {
+  const scan = { ranges: [], joined: null, depth: 0, reached: {} }; // joined: the string, or the strings, being read; depth: the brackets open
+  for (let i = 0; i < text.length; ) i = scanFrom(text, i, scan);
+  endJoined(scan);
+  return scan.ranges;
+}
+
+function endJoined(scan) {
+  if (scan.joined) scan.ranges.push(scan.joined);
+  scan.joined = null;
+}
+
+const lineEnd = (text, from) => (text.indexOf("\n", from) === -1 ? text.length : text.indexOf("\n", from));
+const nextDepth = (depth, ch) => ("([{".includes(ch) ? depth + 1 : ")]}".includes(ch) ? Math.max(0, depth - 1) : depth);
+
+/** Reads what starts at `i`, a string, a comment, a space or something of the code; returns where the next thing starts. */
+function scanFrom(text, i, scan) {
+  WORD.lastIndex = i;
+  const word = WORD.exec(text)?.[0] ?? "";
+  const quote = i + (STRING_PREFIX.test(word) ? word.length : 0);
+  if (isQuote(text[quote])) return scanString(text, i, quote, scan);
+  const ch = text[i];
+  if (ch === "#") return lineEnd(text, i);
+  if (ch === "\n") {
+    if (scan.depth === 0) endJoined(scan); // only outside brackets does a line break end a statement
+    return i + 1;
+  }
+  if (ch === "\\" && text[i + 1] === "\n") return i + 2;
+  if (/\s/.test(ch)) return i + 1;
+  endJoined(scan); // a name, a number, an operator or a bracket
+  scan.depth = nextDepth(scan.depth, ch);
+  return i + Math.max(word.length, 1);
+}
+
+/** The string whose opening quotes are at `quote` (its prefix starting at `i`): one more for the string being joined, or none when it is never closed. */
+function scanString(text, i, quote, scan) {
+  const end = stringEnd(text, quote, scan.reached);
+  if (end === -1) {
+    endJoined(scan); // opened and never closed: not a string, the quotes mean nothing
+    return quote + 3; // past the opening quotes, three at most: what follows is code again
+  }
+  scan.joined = [scan.joined?.[0] ?? i, end];
+  return end;
+}
+
+/**
+ * Whether each line starts inside a string of Python that goes over several lines: triple-quoted, continued by a
+ * backslash, or made of literals joined over lines (`("a"\n"b")`). Grist 1.7.20 and later write the lines of such a
+ * string in a formula as they are, unindented, so their indentation says nothing about the layout around them.
+ */
+export function stringLines(lines) {
+  const ranges = stringRanges(lines.join("\n"));
+  let next = 0; // the first string that may still contain a line break
+  let start = 0; // offset of the line
+  return lines.map((line) => {
+    const lineBreak = start - 1; // before this line
+    start += line.length + 1;
+    while (next < ranges.length && ranges[next][1] <= lineBreak) next++;
+    return next < ranges.length && ranges[next][0] <= lineBreak;
+  });
+}
+
+/** [index, character, depth] of every character outside a string literal; depth counts the brackets open around it. */
+function* codeChars(text, from = 0) {
+  let depth = 0;
+  let quote = null;
+  for (let i = from; i < text.length; i++) {
+    const ch = text[i];
+    if (quote) {
+      if (ch === "\\") i++;
+      else if (ch === quote) quote = null;
+    } else if (ch === "'" || ch === '"') {
+      quote = ch;
+    } else {
+      if (")]}".includes(ch)) depth--;
+      yield [i, ch, depth];
+      if ("([{".includes(ch)) depth++;
+    }
+  }
+}
+
+/** `text` without the comment that ends it (a `#` inside a string is no comment). */
+export function withoutComment(text) {
+  for (const [i, ch] of codeChars(text)) if (ch === "#") return text.slice(0, i).trimEnd();
+  return text;
+}
+
+/** Index of the bracket closing the one at `openIndex` (a `)` inside 'Oui (confirmé)' does not count), or -1. */
+export function findMatchingClose(text, openIndex) {
+  if (!"([{".includes(text[openIndex])) return -1;
+  for (const [i, ch, depth] of codeChars(text, openIndex)) if (")]}".includes(ch) && depth === 0) return i;
+  return -1;
+}
+
+/** The arguments of a call as source text: `'People', visible_col='Name'` gives positional ["'People'"] and kwargs { visible_col: "'Name'" }. */
+export function parseArguments(text) {
+  const pieces = [];
+  let start = 0;
+  for (const [i, ch, depth] of codeChars(text)) {
+    if (ch === "," && depth === 0) {
+      pieces.push(text.slice(start, i));
+      start = i + 1;
+    }
+  }
+  pieces.push(text.slice(start));
+
+  const positional = [];
+  const kwargs = {};
+  for (const piece of pieces.map((item) => item.trim()).filter(Boolean)) {
+    const named = piece.match(/^([A-Za-z_]\w*)\s*=\s*([\s\S]*)$/);
+    if (named) kwargs[named[1]] = named[2];
+    else positional.push(piece);
+  }
+  return { positional, kwargs };
+}
+
+/** The strings of a list literal given as source text (`['a', "b"]`), or null when there is none; `onSkipped` is told of each item that is not a string, which is left out. */
+export function parseStringList(source, onSkipped = () => {}) {
+  if (!source?.startsWith("[") || !source.endsWith("]")) return null;
+  const items = parseArguments(source.slice(1, -1)).positional.map((piece) => {
+    const item = parseString(piece);
+    if (item === null) onSkipped(piece);
+    return item;
+  });
+  const strings = items.filter((item) => item !== null);
+  return strings.length > 0 ? strings : null;
+}

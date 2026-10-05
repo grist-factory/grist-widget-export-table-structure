@@ -1,0 +1,16 @@
+{
+  "name": "export-table-structure",
+  "version": "1.0.0-beta.1",
+  "private": true,
+  "description": "Widget personnalisé Grist : copie la structure d'une table d'un document à un autre (Import / Export du code Code View).",
+  "type": "module",
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/grist-factory/export-table-structure.git"
+  },
+  "bugs": {
+    "url": "https://github.com/grist-factory/export-table-structure/issues"
+  },
+  "homepage": "https://grist-factory.github.io/export-table-structure/"
+}
