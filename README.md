@@ -41,9 +41,7 @@ Un widget personnalisé de [Grist Factory](https://grist-factory.fr) pour [Grist
 [Sécurité](#sécurité) ·
 [Limites connues](#limites-connues) ·
 [Compatibilité](#compatibilité) ·
-[Hébergement](#hébergement) ·
 [Questions fréquentes](#questions-fréquentes) ·
-[Identité visuelle](#identité-visuelle-grist-factory) ·
 [Structure du projet](#structure-du-projet) ·
 [Licence](#licence-et-crédits)
 
@@ -70,7 +68,7 @@ https://grist-factory.github.io/export-table-structure/
 3. Dans le panneau de droite, choisissez l'option d'URL personnalisée (*Custom URL*) et collez l'adresse ci-dessus.
 4. Sous **Niveau d'accès**, choisissez **Accès complet au document**. C'est nécessaire pour lire la structure des tables et en créer ; le widget ne lit ni n'écrit jamais les lignes de vos tables (voir [Accès demandé à Grist](#accès-demandé-à-grist)).
 
-Les deux onglets, **Import** et **Export**, sont alors prêts. Pour un hébergement sur votre propre serveur, voir [Hébergement](#hébergement).
+Les deux onglets, **Import** et **Export**, sont alors prêts.
 
 ## Utilisation
 
@@ -255,27 +253,6 @@ Le widget copie la **structure** d'une table, et il le fait strictement :
 - **API utilisée** : uniquement celle des widgets personnalisés (`ready`, `docApi.listTables`, `docApi.fetchTable`, `docApi.applyUserActions`). Les validations automatisées portent sur des instances Grist auto-hébergées (images Docker officielles) ; le widget n'a pas encore été validé de la même façon sur Grist SaaS.
 - **Accessibilité** : zones cliquables d'au moins 24 px, contrastes de 4,5:1, navigation au clavier, focus piégé dans les boîtes de dialogue, contrôle automatisé axe-core sans violation sur les écrans principaux. Pas encore passé au lecteur d'écran.
 
-## Hébergement
-
-### GitHub Pages (par défaut)
-
-Le workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publie le site à chaque envoi sur `main`. Pour votre propre copie : dans **Settings → Pages**, choisissez la source **GitHub Actions** ; l'adresse du widget est alors celle que GitHub Pages indique.
-
-La page demande l'API officielle de Grist à sa propre origine (`<script src="/grist-plugin-api.js">`, la forme qu'attend une instance Grist, qui sert ce fichier à sa racine). Pages n'étant pas une instance, le workflow télécharge l'API officielle (`https://docs.getgrist.com/grist-plugin-api.js`) au moment de publier, la place à côté de `index.html` et fait pointer la balise dessus : la page publiée ne contacte aucun autre domaine. La copie est celle de la dernière publication ; relancer le workflow (onglet Actions, *Run workflow*) l'actualise. Le fichier appartient à Grist Labs (Apache-2.0, voir [`assets/grist-plugin-api.NOTICE.txt`](assets/grist-plugin-api.NOTICE.txt)).
-
-### Réseau fermé / auto-hébergé
-
-Servez les fichiers que copie `pages.yml` (`index.html`, `style.css`, `favicon.svg`, `js/`, `fonts/manrope/`, `assets/`) par n'importe quel hébergement statique, et mettez à côté de `index.html` le fichier de **votre** instance (`<votre-grist>/grist-plugin-api.js`), avec la balise `<script src="grist-plugin-api.js">`. Si le widget est servi par le même domaine que Grist, laissez `/grist-plugin-api.js`. Dans les deux cas, rien à changer à la politique de sécurité. Sans ce fichier, les deux onglets le disent (« Impossible de trouver l'API Grist… »).
-
-### En local
-
-```sh
-git clone https://github.com/grist-factory/export-table-structure.git
-cd export-table-structure
-curl -o grist-plugin-api.js https://docs.getgrist.com/grist-plugin-api.js   # ignoré par .gitignore
-python3 -m http.server 8000                                                  # puis http://localhost:8000/
-```
-
 ## Questions fréquentes
 
 <details>
@@ -311,19 +288,8 @@ Parce que son type n'est pas reconnu, ou qu'elle référence une table qui n'exi
 <details>
 <summary><strong>Fonctionne-t-il hors ligne, sur une instance Grist fermée ?</strong></summary>
 
-Oui : la page ne contacte aucun autre domaine que celui qui la sert. Voir [Réseau fermé / auto-hébergé](#réseau-fermé--auto-hébergé).
+Oui : la page ne contacte aucun autre domaine que celui qui la sert.
 </details>
-
-## Identité visuelle (Grist Factory)
-
-L'interface suit l'identité commune aux widgets **Grist Factory** ([grist-factory.fr](https://grist-factory.fr)) :
-
-- **Palette** : une base neutre et un seul bleu d'accent (`#2f6fed`) pour les actions et états actifs ; rouge pour les erreurs, ambre pour les remarques de l'analyse, vert pour les confirmations — jamais de couleur sans rôle. Coins arrondis, ombres douces réservées aux éléments flottants. Quatre valeurs de la charte sont légèrement assombries pour atteindre 4,5:1 (WCAG AA).
-- **Typographie** : **Manrope** (police variable, licence SIL OFL), servie depuis [`fonts/manrope/`](fonts/manrope/) plutôt que depuis une CDN — aucun appel réseau de plus. Le code Python reste en police à chasse fixe.
-- **Thème** système, clair ou sombre, mémorisé sur l'appareil.
-- **Bilingue** français / anglais : toute chaîne visible est traduite, accords singulier/pluriel compris (« Table « X » créée avec 1 colonne. » / « … avec 3 colonnes. »). Les notes de fin d'import et les messages d'erreur renvoyés par Grist restent dans leur langue d'origine, sauf le refus d'écriture.
-- **Icônes** : des SVG en contour, écrits dans `index.html` ; ni police d'icônes, ni image externe.
-- **Accessibilité** : zones cliquables d'au moins 24 px, focus visible qui revient au bouton actionné, Tab et Maj+Tab gardés dans les boîtes de dialogue, noms accessibles, annonces de fin d'analyse, onglets pilotés aux flèches, Début et Fin, mode contraste élevé.
 
 ## Structure du projet
 
