@@ -10,7 +10,7 @@ Un widget personnalisé de [Grist Factory](https://grist-factory.fr) pour [Grist
 [![Statut : Beta](https://img.shields.io/badge/statut-Beta-orange)](#limites-connues)
 [![Version 1.0.0-beta.1](https://img.shields.io/badge/version-1.0.0--beta.1-2f6fed)](CHANGELOG.md)
 [![Licence GPL-3.0](https://img.shields.io/badge/licence-GPL--3.0-blue)](LICENSE)
-[![Grist 1.2+](https://img.shields.io/badge/Grist-1.2%2B-1c7c54)](#compatibilité)
+![Grist 1.2+](https://img.shields.io/badge/Grist-1.2%2B-1c7c54)
 [![Aucune dépendance](https://img.shields.io/badge/d%C3%A9pendances-aucune-brightgreen)](SECURITY.md#dépendances)
 [![Interface FR / EN](https://img.shields.io/badge/interface-FR%20%7C%20EN-blueviolet)](#identité-visuelle-grist-factory)
 
@@ -40,7 +40,6 @@ Un widget personnalisé de [Grist Factory](https://grist-factory.fr) pour [Grist
 [Ce qui est repris](#ce-qui-est-repris) ·
 [Sécurité](#sécurité) ·
 [Limites connues](#limites-connues) ·
-[Compatibilité](#compatibilité) ·
 [Questions fréquentes](#questions-fréquentes) ·
 [Structure du projet](#structure-du-projet) ·
 [Licence](#licence-et-crédits)
@@ -246,12 +245,6 @@ Le widget copie la **structure** d'une table, et il le fait strictement :
 - **Formules de déclenchement** : reprises comme formule des nouvelles lignes ; les réglages « recalculer quand… » ne figurent pas dans la Code View et ne sont pas repris.
 - **Très gros textes** (des milliers de tables, des dizaines de milliers de colonnes) : l'aperçu devient lent. Importez par parties.
 - **Navigateurs** : essayé dans Chromium ; pas encore sous Firefox ou Safari, ni avec un lecteur d'écran.
-
-## Compatibilité
-
-- **Grist** : le widget a été validé contre de vraies instances **Grist 1.2.1** (octobre 2024), **1.7.20** et une version de développement du 1er octobre 2026 — aller-retour Export → Import de chaque type de colonne, références bidirectionnelles, formules, et widget monté dans la vraie page de Grist. Avant 1.2, le moteur ne connaît pas les références bidirectionnelles (essayé sur 1.1.10 : le widget le dit dans le message de fin et crée des références simples) ; avant 1.1, il n'a pas de description de colonne (1.0.5).
-- **API utilisée** : uniquement celle des widgets personnalisés (`ready`, `docApi.listTables`, `docApi.fetchTable`, `docApi.applyUserActions`). Les validations automatisées portent sur des instances Grist auto-hébergées (images Docker officielles) ; le widget n'a pas encore été validé de la même façon sur Grist SaaS.
-- **Accessibilité** : zones cliquables d'au moins 24 px, contrastes de 4,5:1, navigation au clavier, focus piégé dans les boîtes de dialogue, contrôle automatisé axe-core sans violation sur les écrans principaux. Pas encore passé au lecteur d'écran.
 
 ## Questions fréquentes
 
